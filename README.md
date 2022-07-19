@@ -8,10 +8,13 @@ There are four pairs of `.py` and `.config` files. Each `.config` file is meant 
     python create-bins.py create-bins.config
     
 The tools do the following:
-1. *create-bins.py*: 
-2. *create-parameters.py*:
-3. *crate-runfiles.py*:
-4. *collect-results.py*:
+1. **create-bins.py**: Partitions the 31346 neurons into bins using a kd-tree, created by k chosen parameters. Number of bins is 2^n for the smallest integer n such that 31346/2^n <= (bin size)
+ 
+2. **create-parameters.py**: Creates new "paramaters" for use in the TriDy pipeline. These are binary vectors of length 31346, with 1 in the positions of neurons to select, and 0 otherwise.
+
+3. **create-runfiles.py**: Creates .sbatch and .json files for running TriDy, split into as many jobs as necessary. The TriDy package is necessary for this step, since temporary pipeline.py and toolbox.py files are created, to make sure that the new "parameters" are used. A bash `.sh` file containing all the commands to be executed is also created.
+
+4. **collect-results.py**: Collects results created by running TriDy, and exports them in a dataframe.
 
 ### Parameters
 
