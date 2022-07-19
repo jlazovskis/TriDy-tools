@@ -1,5 +1,6 @@
 # Step 3 of 4: Create .sbatch and .json files for running TriDy
 
+# A file containing all the command to be executed is also created, named runfiles.sh. This can be executed with "bash runfiles.sh"
 # Temporary pipeline.py and toolbox.py files are created as well, to make sure that the correct 'parameters' are used
 # The content of the pipeline.py and toolbox.py files is assumed to be as in the latest version of TriDy
 
