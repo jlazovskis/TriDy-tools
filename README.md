@@ -1,7 +1,22 @@
 # TriDy-tools
 Tools for creating new selection parameters and distributing featurisation tasks
 
-The available parameters are given below. Since there are so many, we split them up, first listing the graph-theoretic / topological parameters.
+### Setup
+
+There are four pairs of `.py` and `.config` files. Each `.config` file is meant to be changed, then the `.py` file is meant to be executed with the `.config` file coming after it, for example:
+
+    python create-bins.py create-bins.config
+    
+The tools do the following:
+1. *create-bins.py*: 
+2. *create-parameters.py*:
+3. *crate-runfiles.py*:
+4. *collect-results.py*:
+
+### Parameters
+
+The available parameters are given below, and are located in the `parameters.pkl` dataframe. Since there are so many, we split them up, first listing the graph-theoretic / topological parameters.
+
 | Name | Short name | Description |
 | --- | --- | --- |
 | tribe_size | ts | number of neurons in the closed neighbourhood of a neuron | 
