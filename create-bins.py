@@ -31,7 +31,8 @@ with open(config_address, 'r') as f:
 selection_parameters = config_dict['selection_parameters']    # A list of selection parameters by which to create a kd-tree. Note that the order matters.
 add_noise = config_dict['add_noise']                          # A boolean list of the same length as above, indicating to which parameters noise should be added. If shorter, assume True.
 binsize_target = config_dict['binsize_target']                # The target leaf size for the kd-tree. Not guaranteed by default. Will not exceed this if unique values.
-overwrite_existing = config_dict['overwrite_existing']        # Wether or not to overwrite existing bins (and noise). Default is False.
+overwrite_existing = config_dict['overwrite_existing']        # Whether or not to overwrite existing bins (and noise). Default is False.
+save_centroids = config_dict['save_centroids']                # Wgether or not to save centroids of bins. Default is False.
 export_dir = config_dict['export_dir']                        # Directory to which bins will be exported, as a single (ragged) .npy array.
 
 ##
@@ -122,16 +123,18 @@ for i,s in enumerate(selection_parameters):
 ##
 
 print('----------\nCreating kd-tree in '+str(len(selection_parameters))+' dimensions', flush=True)
-tree = KDTree(np.transpose(np.vstack(tuple(parameters))), leafsize=binsize_target)
+vector = np.transpose(np.vstack(tuple(parameters)))
+tree = KDTree(vector, leafsize=binsize_target)
 partition,split = return_partition(tree, verbose=True, save_split=True)
-
-print('Saving', flush=True)
-name = reduce(lambda x,y: x+'_'+y,[df_shortdict[s] for s in selection_parameters])
 
 ##
 ## Save partition
 ##
 
+name = reduce(lambda x,y: x+'_'+y,[df_shortdict[s] for s in selection_parameters])
+
+# Export partition (array of bins)
+print('Saving partition', flush=True)
 if overwrite_existing:
     np.save(export_dir+'partition_'+name+'.npy', np.array(partition,dtype=object))
 else:
@@ -139,11 +142,30 @@ else:
     assert not location.is_file(), 'Partition file exists, but config file says to not overwrite. Delete partition file or change config file.'
     np.save(export_dir+'partition_'+name+'.npy', np.array(partition,dtype=object))
 
+# Export split (less / greater order)
+print('Saving split order', flush=True)
 if overwrite_existing:
     np.save(export_dir+'split_'+name+'.npy', split)
 else:
     location = Path(export_dir+'split_'+name+'.npy')
     assert not location.is_file(), 'Split file exists, but config file says to not overwrite. Delete split file or change config file.'
     np.save(export_dir+'split_'+name+'.npy', split)
+
+# Export centroids (center of bins)
+if save_centroids:
+    print('Saving centroids', flush=True)
+    centroids = []
+    for b in partition:
+        current_values = vector[b]
+        current_min = np.min(current_values, axis=0)
+        current_max = np.max(current_values, axis=0)
+        current_centroid = [(current_min[i]+current_max[i])/2 for i in range(len(current_min))]
+        centroids.append(current_centroid)
+    if overwrite_existing:
+        np.save(export_dir+'centroids_'+name+'.npy', np.array(centroids))
+    else:
+        location = Path(export_dir+'centroids_'+name+'.npy')
+        assert not location.is_file(), 'Centroid file exists, but config file says to not overwrite. Delete centroid file or change config file.'
+        np.save(export_dir+'centroids_'+name+'.npy', np.array(centroids))
 
 print('All done', flush=True)
