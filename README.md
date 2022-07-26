@@ -1,5 +1,5 @@
 # TriDy-tools
-Tools for creating new selection parameters and distributing featurisation tasks
+Tools for creating new selection parameters and distributing featurisation tasks forthe [TriDy pipeline](https://github.com/JasonPSmith/TriDy).
 
 ### Setup
 
