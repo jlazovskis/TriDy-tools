@@ -74,13 +74,13 @@ def leaf_size(tree, order_string):
 ##
 
 print('----------\nLoading selection parameters', flush=True)
-df = pd.read_pickle('parameters.pkl')
+df = pd.read_pickle('data/parameters.pkl')
 parameters = []
 for s in selection_parameters:
     assert s in df.columns, 'Input parameter \''+s+'\' not found in dataframe parameters.pkl column names'
     parameters.append(df[s])
 
-with open('parameters-shortnames.pickle', 'rb') as f:
+with open('data/parameters-shortnames.pickle', 'rb') as f:
     df_shortdict = pickle.load(f)
 
 ##
