@@ -119,6 +119,16 @@ for i,s in enumerate(selection_parameters):
         print('No noise added', flush=True)
 
 ##
+## Normalize to unit cube
+##
+
+print('Normalizing selection parameters to unit cube', flush=True)
+for i in range(len(selection_parameters)):
+    cur_vec = selection_parameters[i]
+    cur_min, cur_max = (np.min(cur_vec), np.max(cur_vec))
+    selection_parameters[i] = np.array([(pt-cur_min)/(cur_max-cur_min) for pt in cur_vec])
+
+##
 ## Create kd-tree
 ##
 
