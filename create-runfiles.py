@@ -14,6 +14,7 @@ import pickle
 import json
 import sys
 import subprocess
+import os
 import numpy as np
 from functools import reduce
 
@@ -26,10 +27,10 @@ config_address = sys.argv[1]
 with open(config_address, 'r') as f:
     config_dict = json.load(f)
 
-selection_parameter_name = config_dict['selection_parameter_name']    # The name to give the new 'parameter'. Should be short names, joined by underscore
+selection_parameters = config_dict['selection_parameters']            # List of selection parameters to use. Should be short names, joined by underscore
+feature_parameters = config_dict['feature_parameters']                # List of feature parameters to use. One collection of files will be created for each
 config_template = config_dict['config_template']                      # Template to use when creating configuration .json files
 sbatch_template = config_dict['sbatch_template']                      # Template to use when creating .sbatch files to begin jobs
-feature_parameters = config_dict['feature_parameters']                # List of feature parameters to use. One collection of files will be created for each
 num_jobs = config_dict['num_jobs']                                    # Number of jobs (=number of sbatch files) to split up featursation+classification task into
 check_existing = config_dict['check_existing']                        # Check to see if some parameters have already been featurised. Default is False
 export_dir = config_dict['export_dir']                                # Where to export the runfiles. Default is ./runfiles/
@@ -49,26 +50,39 @@ with open('data/parameters-shortnames.pickle', 'rb') as f:
 
 print('Loading helper function', flush=True)
 
-# https://stackoverflow.com/questions/4128144
-def inplace_change(filename, old_string, new_string):
+# Function to replace strings in files
+# Modified from https://stackoverflow.com/questions/4128144
+def inplace_change(filename, old_new_strings):
+
     # Safely read the input filename using 'with'
     with open(filename) as f:
         s = f.read()
-        if old_string not in s:
-            print('"{old_string}" not found in {filename}.'.format(**locals()))
-            return
+        for old_string,new_string in old_new_strings:
+            if old_string not in s:
+                print('"{old_string}" not found in {filename}, exiting.'.format(**locals()))
+                return
 
     # Safely write the changed content, if found in the file
     with open(filename, 'w') as f:
         # print('Changing "{old_string}" to "{new_string}" in {filename}'.format(**locals()))
-        s = s.replace(old_string, new_string)
+        for old_string,new_string in old_new_strings:
+            s = s.replace(old_string, new_string)
         f.write(s)
 
 ##
-## Create runfiles
+## Create folders and runfiles
 ##
 
 for fparam in feature_parameters:
+    fshort = df_shortdict[fparam]
+    for sparam in selection_parameters:
+        print(fshort+' '+sparam, end='', flush=True)
+
+        # Create folders
+        subprocess.run(['mdir'])
+        for jobnum in range(num_jobs):
+            print(' '+str(jobnum), end='', flush=True)
+
 
 
 ##
