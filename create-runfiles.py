@@ -27,14 +27,18 @@ config_address = sys.argv[1]
 with open(config_address, 'r') as f:
     config_dict = json.load(f)
 
-selection_parameters = config_dict['selection_parameters']            # List of selection parameters to use. Should be short names, joined by underscore
-feature_parameters = config_dict['feature_parameters']                # List of feature parameters to use. One collection of files will be created for each
-config_template = config_dict['config_template']                      # Template to use when creating configuration .json files
-sbatch_template = config_dict['sbatch_template']                      # Template to use when creating .sbatch files to begin jobs
-num_jobs = config_dict['num_jobs']                                    # Number of jobs (=number of sbatch files) to split up featursation+classification task into
-check_existing = config_dict['check_existing']                        # Check to see if some parameters have already been featurised. Default is False
-export_dir = config_dict['export_dir']                                # Where to export the runfiles. Default is ./runfiles/
+selection_parameters = config_dict['selection_parameters']        # List of selection parameters to use. Should match names of custom selection parameter binary arrays
+feature_parameters = config_dict['feature_parameters']            # List of feature parameters to use. One collection of files will be created for each
+feature_gaps = config_dict['feature_gaps']                        # List of feature parameter gaps to use. Must be of same length as feature_parameters. Irrelevant for all but spectral gaps
+json_template = config_dict['json_template']                      # Template to use when creating configuration .json files
+sbatch_template = config_dict['sbatch_template']                  # Template to use when creating .sbatch files to begin jobs
+num_jobs = config_dict['num_jobs']                                # Number of jobs (=number of sbatch files) to split up featursation+classification task into
+check_existing = config_dict['check_existing']                    # Check to see if some parameters have already been featurised. Default is False
+bin_dir = config_dict['bin_dir']                                  # Location of bins (selection paramater partition). Necessary to know indices of jobs. Default is ./bins/
+export_dir = config_dict['export_dir']                            # Where to export the runfiles. Default is ./runfiles/
 
+created_file_counter = 0
+created_directory_counter = 0
 
 ##
 ## Load parameter shortname dictionary
@@ -52,18 +56,18 @@ print('Loading helper function', flush=True)
 
 # Function to replace strings in files
 # Modified from https://stackoverflow.com/questions/4128144
-def inplace_change(filename, old_new_strings):
+def file_string_replace(source_file, target_file, old_new_strings):
 
     # Safely read the input filename using 'with'
-    with open(filename) as f:
+    with open(source_file) as f:
         s = f.read()
         for old_string,new_string in old_new_strings:
             if old_string not in s:
-                print('"{old_string}" not found in {filename}, exiting.'.format(**locals()))
+                print('"{old_string}" not found in {source_file}, exiting.'.format(**locals()))
                 return
 
     # Safely write the changed content, if found in the file
-    with open(filename, 'w') as f:
+    with open(target_file, 'w') as f:
         # print('Changing "{old_string}" to "{new_string}" in {filename}'.format(**locals()))
         for old_string,new_string in old_new_strings:
             s = s.replace(old_string, new_string)
@@ -73,15 +77,49 @@ def inplace_change(filename, old_new_strings):
 ## Create folders and runfiles
 ##
 
-for fparam in feature_parameters:
-    fshort = df_shortdict[fparam]
-    for sparam in selection_parameters:
-        print(fshort+' '+sparam, end='', flush=True)
+for sparam in selection_parameters:
+
+    # Load bins (partition) 
+    expected_bins = bin_dir+'partition_'+sparam+'.npy'
+    try:
+        current_bins = np.load(expected_bins,allow_pickle=True)
+        num_bins = len(current_bins)
+        print('Selection parameter '+sparam+' has '+len(num_bins)+' bins', flush=True)
+    except:
+        print('Expected bin file '+expected_bins+' not found. Check bin_dir in conig file. Exiting.', flush=True)
+        exit()
+
+    # Iterate over feature parameters
+    for findex,fparam in enumerate(feature_parameters):
+        fshort = df_shortdict[fparam]
+        fgap = feature_gaps[findex]
+        assert fgap in ['high','low','radius'], 'Feature gap must be one of \'high\', \'low\', \'radius\'.' 
+        current_name = sparam+'-'+fshort
+        print(current_name, end='', flush=True)
 
         # Create folders
-        subprocess.run(['mdir'])
+        os.mkdir('configs/'+current_name)
+        os.mkdir('sbatches/'+current_name)
+        os.mkdir('results/'+current_name)
+        created_directory_counter += 3
+
+        # Declare string replacements
+        string_replacements = [('#SSHORT',sparam), ('#FPARAM',fparam), ('#FSHORT',fshort), ('#FGAP',fgap)]
+
+        # Distribute jobs evenly
+        chunk_size = num_bins//num_jobs
+        chunks = [chunk_size]*num_jobs
+        leftover_size = num_bins%chunk_size
+        for i in range(len(leftover_size)):
+            chunks[i]+=1
+        assert sum(chunks)==num_bins, 'Number of bins does not match sum of job sizes'
+
+        # Create .json files
         for jobnum in range(num_jobs):
             print(' '+str(jobnum), end='', flush=True)
+            string_replacements.append(('#JOBNUM',str(jobnum)))
+            string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in range(128*piece,128*(piece+1))])))
+            file_string_replace(json_template, 'configs/'+current_name+'/'+str(jobnum)+'.json', 
 
 
 
@@ -95,3 +133,9 @@ for fparam in feature_parameters:
 
 # Insert new parameters and their location
 
+
+##
+## Print what was done
+##
+
+print('----------\nCreated '+str(created_directory_counter)+' directories', flush=True)
