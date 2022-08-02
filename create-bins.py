@@ -69,6 +69,8 @@ def leaf_size(tree, order_string):
         partition_size.append(tree.children)
         split_order.append(order_string)
 
+created_file_counter = 0
+
 ##
 ## Load selection parameter(s)
 ##
@@ -115,6 +117,7 @@ for i,s in enumerate(selection_parameters):
             location = Path(export_dir+'noise_'+current_short+'.npy')
             assert not location.is_file(), 'Noise file exists, but config file says to not overwrite. Delete noise file or change config file.'
             np.save(export_dir+'noise_'+current_short+'.npy', current_noise)
+        created_file_counter += 1
     else:
         print('No noise added', flush=True)
 
@@ -151,6 +154,7 @@ else:
     location = Path(export_dir+'partition_'+name+'.npy')
     assert not location.is_file(), 'Partition file exists, but config file says to not overwrite. Delete partition file or change config file.'
     np.save(export_dir+'partition_'+name+'.npy', np.array(partition,dtype=object))
+created_file_counter += 1
 
 # Export split (less / greater order)
 print('Saving split order', flush=True)
@@ -160,6 +164,7 @@ else:
     location = Path(export_dir+'split_'+name+'.npy')
     assert not location.is_file(), 'Split file exists, but config file says to not overwrite. Delete split file or change config file.'
     np.save(export_dir+'split_'+name+'.npy', split)
+created_file_counter += 1
 
 # Export centroids (center of bins)
 if save_centroids:
@@ -177,5 +182,10 @@ if save_centroids:
         location = Path(export_dir+'centroids_'+name+'.npy')
         assert not location.is_file(), 'Centroid file exists, but config file says to not overwrite. Delete centroid file or change config file.'
         np.save(export_dir+'centroids_'+name+'.npy', np.array(centroids))
+    created_file_counter += 1
 
-print('All done', flush=True)
+##
+## Print what was done
+##
+
+print('----------\nCreated '+str(created_file_counter)+' files. Exiting.', flush=True)
