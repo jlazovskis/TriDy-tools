@@ -18,6 +18,6 @@
     "matrix_address": "./data/mc2.npz",
     "export_address": "./data/",
     "spike_trains_address": "./data/spike_trains.npy",
-    "savefolder": "./../TriDy-tools/results/#SSHORT_#FSHORT/"
+    "savefolder": "./../TriDy-tools/results/#SSHORT-#FSHORT/"
   }
 }
