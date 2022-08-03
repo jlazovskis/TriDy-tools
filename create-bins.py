@@ -33,7 +33,7 @@ add_noise = config_dict['add_noise']                          # A boolean list o
 binsize_target = config_dict['binsize_target']                # The target leaf size for the kd-tree. Not guaranteed by default. Will not exceed this if unique values.
 overwrite_existing = config_dict['overwrite_existing']        # Whether or not to overwrite existing bins (and noise). Default is False.
 save_centroids = config_dict['save_centroids']                # Wgether or not to save centroids of bins. Default is False.
-export_dir = config_dict['export_dir']                        # Directory to which bins will be exported, as a single (ragged) .npy array.
+bin_dir = config_dict['bin_dir']                              # Directory to which bins will be exported, as a single (ragged) .npy array.
 
 ##
 ## Auxiliary functions
