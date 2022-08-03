@@ -35,7 +35,9 @@ sbatch_template = config_dict['sbatch_template']                  # Template to 
 num_jobs = config_dict['num_jobs']                                # Number of jobs (=number of sbatch files) to split up featursation+classification task into
 check_existing = config_dict['check_existing']                    # Check to see if some parameters have already been featurised. Default is False
 bin_dir = config_dict['bin_dir']                                  # Location of bins (selection paramater partition). Necessary to know indices of jobs. Default is ./bins/
-export_dir = config_dict['export_dir']                            # Where to export the runfiles. Default is ./runfiles/
+parameter_dir = config_dict['parameter_dir']                      # Location of parameters created in step 2. Default is ./parameters/
+tridy_dir = config_dict['tridy_dir']                              # Location of TriDy package as it is on github. Default is ./../TriDy/
+runfile_dir = config_dict['runfile_dir']                          # Where to export the runfiles. Default is ./runfiles/
 
 created_file_counter = 0
 created_directory_counter = 0
@@ -115,6 +117,9 @@ for sparam in selection_parameters:
         assert sum(chunks) == num_bins, 'Number of bins does not match sum of job sizes'
         chunks_sum = [sum(chunks[:k]) for k in range(len(chunks)+1)]
 
+        # Generate .sh file for easy execution of sbatch files
+        f = open(runfile_dir+current_name+'.sh','w')
+
         for jobnum in range(num_jobs):
             print(' '+str(jobnum), end='', flush=True)
             string_replacements.append(('#JOBNUM',str(jobnum)))
@@ -128,22 +133,41 @@ for sparam in selection_parameters:
             file_string_replace(sbatch_template, 'sbatches/'+current_name+'/'+str(jobnum)+'.sbatch', string_replacements)
             created_file_counter += 1
 
-            # Copy and modify toolbox.py file
+            # Write line to .sh file
+            f.write('sbatch ../sbatches/'+current_name+'/'+str(jobnum)+'.sbatch\n')
 
-            # Copy and modify pipeline.py file
+        # Close .sh file
+        f.close()
+        created_file_counter += 1
 
+        print('', flush=True)
 
+    print('Creating modified toolbox.py and pipeline.py files', flush=True)
+    # Copy and modify toolbox.py file
+    toolbox_replacements = [(
+        # Custom selection parameter names in dictionary
+        'param_dict_inverse = {',
+        'for i in range('+str(num_bins)+'):\n    param_dict[\''+sparam+'-'+str(i)+'\']=\''+sparam+'-'+str(i)+'\'\n\nparam_dict_inverse = {'
+        ),(
+        # Load custom selection parameters
+        'param_files = [np.load(dir_export+\'individual_parameters/\'+param_dict_inverse[f]+\'.npy\',allow_pickle=True) for f in param_names]\n',
+        'param_files = []\nfor f in param_names:\n    try:\n        param_files.append(np.load(dir_export+\'individual_parameters/\'+param_dict_inverse[f]+\'.npy\',allow_pickle=True))\n    except:\n        param_files.append(np.load(./../Tridy-tools'+parameter_dir[1:]+'\'+param_dict_inverse[f]+\'.npy\',allow_pickle=True))\n'
+        )]
+    file_string_replace(tridy_dir+'toolbox.py', runfile_dir+'toolbox-'+sparam+'.py', toolbox_replacements)
+    created_file_counter += 1
 
-##
-## Open template files
-##
-
-
-
-# Read existing toolbox.py and pipeline.py files
-
-# Insert new parameters and their location
-
+    # Copy and modify pipeline.py file
+    pipeline_replacements = [(
+        # Declare job number
+        '\'bin_number\']\n',
+        '\'bin_number\']\njob_order = config_dict[\'values\'][\'job_order\']\n'
+        ),(
+        # Insert job number into output file
+        'output = open(savefolder + \'classification_accuracies_\'+feature_parameter+\'.txt\',\'w\')',
+        'output = open(savefolder + \'classification_accuracies_\'+feature_parameter+\'_\'+str(job_order)+\'.txt\',\'w\')'
+        )]
+    file_string_replace(tridy_dir+'pipeline.py', runfile_dir+'pipeline-'+sparam+'.py', pipeline_replacements)
+    created_file_counter += 1
 
 ##
 ## Print what was done
