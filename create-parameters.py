@@ -27,6 +27,8 @@ selection_parameter_name = config_dict['selection_parameter_name']    # The name
 bin_dir = config_dict['bin_dir']                                      # Location of the partition (made of bins) created in step 1. Default is ./bins/
 parameter_dir = config_dict['parameter_dir']                          # Where to export the binary parameters. Default is ./parameters/
 
+created_file_counter = 0
+
 ##
 ## Load partition
 ##
@@ -44,5 +46,11 @@ for i,b in enumerate(partition):
     for neuron in b:
         current_parameter[neuron] = 1
     np.save(parameter_dir + selection_parameter_name + '-' + str(i) + '.npy',current_parameter)
+    created_file_counter += 1
 
-print('All done', flush=True)
+##
+## Print what was done
+##
+
+print('----------\nCreated '+str(created_file_counter)+' files', flush=True)
+print('All done, exiting', flush=True)
