@@ -73,3 +73,11 @@ The available parameters are given below, and are located in the `parameters.pkl
 | blsg_reversed | blsgR | same, but edges are reversed |
 | blsg_reversed_low | blsRl | same, but edges are reversed |
 | blsg_reversed_radius | blsRr | same, but edges are reversed |
+
+### Custom parameters
+
+| Name | Short name | Description |
+| --- | --- | --- |
+| rc_per_edges | rcpe | number of pairs of reciprocal connections divided by the number of edges | 
+| rc_per_nodes | rcpn | number of pairs of reciprocal connections divided by the number of vertices |
+| edges_per_nodes | epn | number of edges divided by the number of vertices |
