@@ -85,6 +85,8 @@ for s in selection_parameters:
 with open('data/parameters-shortnames.pickle', 'rb') as f:
     df_shortdict = pickle.load(f)
 
+name = reduce(lambda x,y: x+'_'+y,[df_shortdict[s] for s in selection_parameters])
+
 ##
 ## Add and save noise
 ##
@@ -112,11 +114,11 @@ for i,s in enumerate(selection_parameters):
         # Save noise
         print('Saving noise', flush=True)
         if overwrite_existing:
-            np.save(export_dir+'noise_'+current_short+'.npy', current_noise)
+            np.save(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy', current_noise)
         else:
-            location = Path(export_dir+'noise_'+current_short+'.npy')
+            location = Path(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy')
             assert not location.is_file(), 'Noise file exists, but config file says to not overwrite. Delete noise file or change config file.'
-            np.save(export_dir+'noise_'+current_short+'.npy', current_noise)
+            np.save(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy', current_noise)
         created_file_counter += 1
     else:
         print('No noise added', flush=True)
@@ -127,9 +129,9 @@ for i,s in enumerate(selection_parameters):
 
 print('Normalizing selection parameters to unit cube', flush=True)
 for i in range(len(selection_parameters)):
-    cur_vec = selection_parameters[i]
+    cur_vec = parameters[i]
     cur_min, cur_max = (np.min(cur_vec), np.max(cur_vec))
-    selection_parameters[i] = np.array([(pt-cur_min)/(cur_max-cur_min) for pt in cur_vec])
+    parameters[i] = np.array([(pt-cur_min)/(cur_max-cur_min) for pt in cur_vec])
 
 ##
 ## Create kd-tree
@@ -144,26 +146,24 @@ partition,split = return_partition(tree, verbose=True, save_split=True)
 ## Save partition
 ##
 
-name = reduce(lambda x,y: x+'_'+y,[df_shortdict[s] for s in selection_parameters])
-
 # Export partition (array of bins)
 print('Saving partition', flush=True)
 if overwrite_existing:
-    np.save(export_dir+'partition_'+name+'.npy', np.array(partition,dtype=object))
+    np.save(bin_dir+'partition_'+name+'.npy', np.array(partition,dtype=object))
 else:
-    location = Path(export_dir+'partition_'+name+'.npy')
+    location = Path(bin_dir+'partition_'+name+'.npy')
     assert not location.is_file(), 'Partition file exists, but config file says to not overwrite. Delete partition file or change config file.'
-    np.save(export_dir+'partition_'+name+'.npy', np.array(partition,dtype=object))
+    np.save(bin_dir+'partition_'+name+'.npy', np.array(partition,dtype=object))
 created_file_counter += 1
 
 # Export split (less / greater order)
 print('Saving split order', flush=True)
 if overwrite_existing:
-    np.save(export_dir+'split_'+name+'.npy', split)
+    np.save(bin_dir+'split_'+name+'.npy', split)
 else:
-    location = Path(export_dir+'split_'+name+'.npy')
+    location = Path(bin_dir+'split_'+name+'.npy')
     assert not location.is_file(), 'Split file exists, but config file says to not overwrite. Delete split file or change config file.'
-    np.save(export_dir+'split_'+name+'.npy', split)
+    np.save(bin_dir+'split_'+name+'.npy', split)
 created_file_counter += 1
 
 # Export centroids (center of bins)
@@ -177,11 +177,11 @@ if save_centroids:
         current_centroid = [(current_min[i]+current_max[i])/2 for i in range(len(current_min))]
         centroids.append(current_centroid)
     if overwrite_existing:
-        np.save(export_dir+'centroids_'+name+'.npy', np.array(centroids))
+        np.save(bin_dir+'centroids_'+name+'.npy', np.array(centroids))
     else:
-        location = Path(export_dir+'centroids_'+name+'.npy')
+        location = Path(bin_dir+'centroids_'+name+'.npy')
         assert not location.is_file(), 'Centroid file exists, but config file says to not overwrite. Delete centroid file or change config file.'
-        np.save(export_dir+'centroids_'+name+'.npy', np.array(centroids))
+        np.save(bin_dir+'centroids_'+name+'.npy', np.array(centroids))
     created_file_counter += 1
 
 ##
