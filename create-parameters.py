@@ -25,7 +25,7 @@ with open(config_address, 'r') as f:
 
 selection_parameter_name = config_dict['selection_parameter_name']    # The name to give the new 'parameter'. Should be short names, joined by underscore
 bin_dir = config_dict['bin_dir']                                      # Location of the partition (made of bins) created in step 1. Default is ./bins/
-export_dir = config_dict['export_dir']                                # Where to export the binary parameters. Default is ./parameters/
+parameter_dir = config_dict['parameter_dir']                          # Where to export the binary parameters. Default is ./parameters/
 
 ##
 ## Load partition
@@ -43,6 +43,6 @@ for i,b in enumerate(partition):
     current_parameter = np.zeros(nnum,dtype=int)
     for neuron in b:
         current_parameter[neuron] = 1
-    np.save(export_dir + selection_parameter_name + '-' + str(i) + '.npy',current_parameter)
+    np.save(parameter_dir + selection_parameter_name + '-' + str(i) + '.npy',current_parameter)
 
 print('All done', flush=True)
