@@ -110,16 +110,27 @@ for sparam in selection_parameters:
         chunk_size = num_bins//num_jobs
         chunks = [chunk_size]*num_jobs
         leftover_size = num_bins%chunk_size
-        for i in range(len(leftover_size)):
+        for i in range(leftover_size):
             chunks[i]+=1
-        assert sum(chunks)==num_bins, 'Number of bins does not match sum of job sizes'
+        assert sum(chunks) == num_bins, 'Number of bins does not match sum of job sizes'
+        chunks_sum = [sum(chunks[:k]) for k in range(len(chunks)+1)]
 
-        # Create .json files
         for jobnum in range(num_jobs):
             print(' '+str(jobnum), end='', flush=True)
             string_replacements.append(('#JOBNUM',str(jobnum)))
-            string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in range(128*piece,128*(piece+1))])))
-            file_string_replace(json_template, 'configs/'+current_name+'/'+str(jobnum)+'.json', 
+            string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in range(chunks_sum[jobnum],chunks_sum[jobnum+1])])))
+
+            # Create .json files
+            file_string_replace(json_template, 'configs/'+current_name+'/'+str(jobnum)+'.json', string_replacements)
+            created_file_counter += 1
+
+            # Create .sbatch files
+            file_string_replace(sbatch_template, 'sbatches/'+current_name+'/'+str(jobnum)+'.sbatch', string_replacements)
+            created_file_counter += 1
+
+            # Copy and modify toolbox.py file
+
+            # Copy and modify pipeline.py file
 
 
 
@@ -138,4 +149,6 @@ for sparam in selection_parameters:
 ## Print what was done
 ##
 
-print('----------\nCreated '+str(created_directory_counter)+' directories', flush=True)
+print('----------\nCreated '+str(created_file_counter)+' files', flush=True)
+print('Created '+str(created_directory_counter)+' directories', flush=True)
+print('All done, exiting', flush=True)
