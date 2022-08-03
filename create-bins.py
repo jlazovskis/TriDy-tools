@@ -188,4 +188,5 @@ if save_centroids:
 ## Print what was done
 ##
 
-print('----------\nCreated '+str(created_file_counter)+' files. Exiting.', flush=True)
+print('----------\nCreated '+str(created_file_counter)+' files', flush=True)
+print('All done, exiting', flush=True)
