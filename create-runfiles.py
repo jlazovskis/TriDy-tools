@@ -33,10 +33,12 @@ json_template = config_dict['json_template']                      # Template to 
 sbatch_template = config_dict['sbatch_template']                  # Template to use when creating .sbatch files to begin jobs
 num_jobs = config_dict['num_jobs']                                # Number of jobs (=number of sbatch files) to split up featursation+classification task into
 check_existing = config_dict['check_existing']                    # Check to see if some parameters have already been featurised. Default is False
+only_featurise = config_dict['only_featurise']                    # If true, only creates the feature vectors and does not classify. Useful when repeating long jobs.
 bin_dir = config_dict['bin_dir']                                  # Location of bins (selection paramater partition). Necessary to know indices of jobs. Default is ./bins/
 parameter_dir = config_dict['parameter_dir']                      # Location of parameters created in step 2. Default is ./parameters/
 tridy_dir = config_dict['tridy_dir']                              # Location of TriDy package as it is on github. Default is ./../TriDy/
 runfile_dir = config_dict['runfile_dir']                          # Where to export the runfiles. Default is ./runfiles/
+results_dir = config_dict['results_dir']                          # Where the classification results are located. Default is ./results/
 
 # Get feature gaps from names
 feature_gaps = []
@@ -142,36 +144,51 @@ for sparam in selection_parameters:
             except:
                 pass
 
+        # Create list of vectors to featurise
+        if check_existing:
+            print('Searching for vectors not yet featurised: ', end='', flush=True)
+            missing_vectors = []
+            call = subprocess.run(['ls','/gpfs/bbp.cscs.ch/home/lazovski/TriDy-tools'+results_dir[1:]+current_name+'/'],stdout = subprocess.PIPE)
+            out = call.stdout.decode('utf-8').split('\n')
+            for i in range(num_bins):
+                if sparam+'-'+str(i)+'_feature_vectors.npy' not in out:
+                    missing_vectors.append(i)
+            print('found '+str(len(missing_vectors)), flush=True)
+        else:
+            missing_vectors = list(range(num_bins))
+
         # Distribute jobs evenly
-        chunk_size = num_bins//num_jobs
+        num_bins_real = len(missing_vectors)
+        chunk_size = num_bins_real//num_jobs
         chunks = [chunk_size]*num_jobs
-        leftover_size = num_bins%chunk_size
+        leftover_size = num_bins_real%chunk_size
         for i in range(leftover_size):
             chunks[i]+=1
-        assert sum(chunks) == num_bins, 'Number of bins does not match sum of job sizes'
+            assert sum(chunks) == num_bins_real, 'Number of bins to do does not match sum of job sizes'
         chunks_sum = [sum(chunks[:k]) for k in range(len(chunks)+1)]
+        job_list = [missing_vectors[chunks_sum[job_num]:chunks_sum[job_num+1]] for job_num in range(num_jobs)]
 
         # Generate .sh file for easy execution of sbatch files
         f = open(runfile_dir+current_name+'.sh','w')
 
-        for jobnum in range(num_jobs):
+        for job_num in range(num_jobs):
             # Declare string replacements
             string_replacements = [('#SSHORT',sparam), ('#FPARAM',fparam_to_pipename[fparam]), ('#FSHORT',fshort), ('#FGAP',fgap)]
 
             print(' '+str(jobnum), end='', flush=True)
             string_replacements.append(('#JOBNUM',str(jobnum)))
-            string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in range(chunks_sum[jobnum],chunks_sum[jobnum+1])])))
+            string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in job_list[job_num]])))
 
             # Create .json files
-            file_string_replace(json_template, 'configs/'+current_name+'/'+str(jobnum)+'.json', string_replacements)
+            file_string_replace(json_template, 'configs/'+current_name+'/'+str(job_num)+'.json', string_replacements)
             created_file_counter += 1
 
             # Create .sbatch files
-            file_string_replace(sbatch_template, 'sbatches/'+current_name+'/'+str(jobnum)+'.sbatch', string_replacements)
+            file_string_replace(sbatch_template, 'sbatches/'+current_name+'/'+str(job_num)+'.sbatch', string_replacements)
             created_file_counter += 1
 
             # Write line to .sh file
-            f.write('sbatch ../sbatches/'+current_name+'/'+str(jobnum)+'.sbatch\n')
+            f.write('sbatch ../sbatches/'+current_name+'/'+str(job_num)+'.sbatch\n')
 
         # Close .sh file
         f.close()
@@ -190,6 +207,7 @@ for sparam in selection_parameters:
         'param_files = [np.load(dir_export+\'individual_parameters/\'+param_dict_inverse[f]+\'.npy\',allow_pickle=True) for f in param_names]\n',
         'param_files = []\nfor f in param_names:\n    try:\n        param_files.append(np.load(dir_export+\'individual_parameters/\'+param_dict_inverse[f]+\'.npy\',allow_pickle=True))\n    except:\n        param_files.append(np.load(\'./../TriDy-tools'+parameter_dir[1:]+'\'+param_dict_inverse[f]+\'.npy\',allow_pickle=True))\n'
         )]
+
     file_string_replace(tridy_dir+'toolbox.py', runfile_dir+'toolbox-'+sparam+'.py', toolbox_replacements)
     created_file_counter += 1
 
@@ -207,6 +225,10 @@ for sparam in selection_parameters:
         'output = open(savefolder + \'classification_accuracies_\'+feature_parameter+\'.txt\',\'w\')',
         'output = open(savefolder + \'classification_accuracies_\'+feature_parameter+\'_\'+str(job_order)+\'.txt\',\'w\')'
         )]
+    # Remove classification step
+    if only_featurise:
+        pipeline_replacements.append(('classify()\n','# classify()\n'))
+
     file_string_replace(tridy_dir+'pipeline.py', runfile_dir+'pipeline-'+sparam+'.py', pipeline_replacements)
     created_file_counter += 1
 
