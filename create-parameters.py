@@ -23,30 +23,31 @@ config_address = sys.argv[1]
 with open(config_address, 'r') as f:
     config_dict = json.load(f)
 
-selection_parameter_name = config_dict['selection_parameter_name']    # The name to give the new 'parameter'. Should be short names, joined by underscore
-bin_dir = config_dict['bin_dir']                                      # Location of the partition (made of bins) created in step 1. Default is ./bins/
-parameter_dir = config_dict['parameter_dir']                          # Where to export the binary parameters. Default is ./parameters/
+selection_parameter_names = config_dict['selection_parameter_name']    # List of names of new 'parameters'. Should be short names, joined by underscore
+bin_dir = config_dict['bin_dir']                                       # Location of the partition (made of bins) created in step 1. Default is ./bins/
+parameter_dir = config_dict['parameter_dir']                           # Where to export the binary parameters. Default is ./parameters/
 
 created_file_counter = 0
 
 ##
-## Load partition
+## Iterate through selection parameters
 ##
 
-print('Loading partition', flush=True)
-partition = np.load(bin_dir+'partition_'+selection_parameter_name+'.npy', allow_pickle=True)
+for sparam in selection_parameter_names:
+    print(sparam, flush=True)
 
-##
-## Export binary parameters
-##
+    # Load partition file
+    print('Loading partition', flush=True)
+    partition = np.load(bin_dir+'partition_'+sparam+'.npy', allow_pickle=True)
 
-print('Creating binary parameter vectors', flush=True)
-for i,b in enumerate(partition):
-    current_parameter = np.zeros(nnum,dtype=int)
-    for neuron in b:
-        current_parameter[neuron] = 1
-    np.save(parameter_dir + selection_parameter_name + '-' + str(i) + '.npy',current_parameter)
-    created_file_counter += 1
+    # Create vectors
+    print('Creating binary parameter vectors', flush=True)
+    for i,b in enumerate(partition):
+        current_parameter = np.zeros(nnum,dtype=int)
+        for neuron in b:
+            current_parameter[neuron] = 1
+        np.save(parameter_dir + sparam + '-' + str(i) + '.npy',current_parameter)
+        created_file_counter += 1
 
 ##
 ## Print what was done
