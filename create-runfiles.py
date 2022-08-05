@@ -134,7 +134,7 @@ for sparam in selection_parameters:
         fgap = feature_gaps[findex]
         assert fgap in ['', 'high','low','radius'], 'Feature gap must be one of \'\', \'high\', \'low\', \'radius\'.' 
         current_name = sparam+'-'+fshort
-        print(current_name, end='', flush=True)
+        print(current_name, flush=True)
 
         # Create folders
         for parent_dir in ['configs','sbatches','results']:
@@ -146,55 +146,63 @@ for sparam in selection_parameters:
 
         # Create list of vectors to featurise
         if check_existing:
-            print('Searching for vectors not yet featurised: ', end='', flush=True)
+            print('Searching for vectors not yet featurised. ', end='', flush=True)
             missing_vectors = []
             call = subprocess.run(['ls','/gpfs/bbp.cscs.ch/home/lazovski/TriDy-tools'+results_dir[1:]+current_name+'/'],stdout = subprocess.PIPE)
             out = call.stdout.decode('utf-8').split('\n')
             for i in range(num_bins):
                 if sparam+'-'+str(i)+'_feature_vectors.npy' not in out:
                     missing_vectors.append(i)
-            print('found '+str(len(missing_vectors)), flush=True)
         else:
             missing_vectors = list(range(num_bins))
-
-        # Distribute jobs evenly
         num_bins_real = len(missing_vectors)
-        chunk_size = num_bins_real//num_jobs
-        chunks = [chunk_size]*num_jobs
-        leftover_size = num_bins_real%chunk_size
-        for i in range(leftover_size):
-            chunks[i]+=1
-            assert sum(chunks) == num_bins_real, 'Number of bins to do does not match sum of job sizes'
-        chunks_sum = [sum(chunks[:k]) for k in range(len(chunks)+1)]
-        job_list = [missing_vectors[chunks_sum[job_num]:chunks_sum[job_num+1]] for job_num in range(num_jobs)]
+        print('Found '+str(num_bins_real)+' vectors. ', end='', flush=True)
 
-        # Generate .sh file for easy execution of sbatch files
-        f = open(runfile_dir+current_name+'.sh','w')
+        if num_bins_real > 0:
 
-        for job_num in range(num_jobs):
-            # Declare string replacements
-            string_replacements = [('#SSHORT',sparam), ('#FPARAM',fparam_to_pipename[fparam]), ('#FSHORT',fshort), ('#FGAP',fgap)]
+            # Distribute jobs evenly
+            chunk_size = num_bins_real//num_jobs
+            chunks = [chunk_size]*num_jobs
+            leftover_size = num_bins_real%num_jobs
+            for i in range(leftover_size):
+                chunks[i]+=1
+            assert sum(chunks) == num_bins_real, 'Number of expected bins ('+str(num_bins_real)+') does not match sum of job sizes ('+str(sum(chunks))+')'
+            chunks_sum = [sum(chunks[:k]) for k in range(len(chunks)+1)]
+            job_list = [missing_vectors[chunks_sum[job_num]:chunks_sum[job_num+1]] for job_num in range(num_jobs)]
 
-            print(' '+str(jobnum), end='', flush=True)
-            string_replacements.append(('#JOBNUM',str(jobnum)))
-            string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in job_list[job_num]])))
+            # Inform user of status
+            if num_bins_real < num_jobs:
+                job_list = job_list[:num_bins_real]
+                num_jobs = num_bins_real
+            print('Splitting into '+str(num_jobs)+' jobs', flush=True)
 
-            # Create .json files
-            file_string_replace(json_template, 'configs/'+current_name+'/'+str(job_num)+'.json', string_replacements)
+            # Generate .sh file for easy execution of sbatch files
+            f = open(runfile_dir+current_name+'.sh','w')
+
+            for job_num in range(num_jobs):
+                # Declare string replacements
+                string_replacements = [('#SSHORT',sparam), ('#FPARAM',fparam_to_pipename[fparam]), ('#FSHORT',fshort), ('#FGAP',fgap)]
+
+                string_replacements.append(('#JOBNUM',str(job_num)))
+                string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in job_list[job_num]])))
+
+                # Create .json files
+                file_string_replace(json_template, 'configs/'+current_name+'/'+str(job_num)+'.json', string_replacements)
+                created_file_counter += 1
+
+                # Create .sbatch files
+                file_string_replace(sbatch_template, 'sbatches/'+current_name+'/'+str(job_num)+'.sbatch', string_replacements)
+                created_file_counter += 1
+
+                # Write line to .sh file
+                f.write('sbatch ../sbatches/'+current_name+'/'+str(job_num)+'.sbatch\n')
+
+            # Close .sh file
+            f.close()
             created_file_counter += 1
 
-            # Create .sbatch files
-            file_string_replace(sbatch_template, 'sbatches/'+current_name+'/'+str(job_num)+'.sbatch', string_replacements)
-            created_file_counter += 1
-
-            # Write line to .sh file
-            f.write('sbatch ../sbatches/'+current_name+'/'+str(job_num)+'.sbatch\n')
-
-        # Close .sh file
-        f.close()
-        created_file_counter += 1
-
-        print('', flush=True)
+        else:
+            print('Nothing to do, skipping', flush=True)
 
     print('Creating modified toolbox.py and pipeline.py files', flush=True)
     # Copy and modify toolbox.py file
