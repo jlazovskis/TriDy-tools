@@ -15,6 +15,7 @@ import json
 import sys
 import subprocess
 import os
+from pathlib import Path
 import numpy as np
 from functools import reduce
 
@@ -32,13 +33,14 @@ feature_parameters = config_dict['feature_parameters']            # List of feat
 json_template = config_dict['json_template']                      # Template to use when creating configuration .json files
 sbatch_template = config_dict['sbatch_template']                  # Template to use when creating .sbatch files to begin jobs
 num_jobs = config_dict['num_jobs']                                # Number of jobs (=number of sbatch files) to split up featursation+classification task into
-check_existing = config_dict['check_existing']                    # Check to see if some parameters have already been featurised. Default is False
+check_existing = config_dict['check_existing']                    # Check to see if some parameters have already been featurised and/or classified. Default is False
 only_featurise = config_dict['only_featurise']                    # If true, only creates the feature vectors and does not classify. Useful when repeating long jobs.
 bin_dir = config_dict['bin_dir']                                  # Location of bins (selection paramater partition). Necessary to know indices of jobs. Default is ./bins/
 parameter_dir = config_dict['parameter_dir']                      # Location of parameters created in step 2. Default is ./parameters/
 tridy_dir = config_dict['tridy_dir']                              # Location of TriDy package as it is on github. Default is ./../TriDy/
 runfile_dir = config_dict['runfile_dir']                          # Where to export the runfiles. Default is ./runfiles/
 results_dir = config_dict['results_dir']                          # Where the classification results are located. Default is ./results/
+dataframe_dir = config_dict['dataframe_dir']                      # Where dataframes will be exported. Relevant only if check_existing = True. Default is ./dataframes/
 
 # Get feature gaps from names
 feature_gaps = []
@@ -146,17 +148,22 @@ for sparam in selection_parameters:
 
         # Create list of vectors to featurise
         if check_existing:
-            print('Searching for vectors not yet featurised. ', end='', flush=True)
+            print('Searching for results dataframe. ', end='', flush=True)
+            target_file = Path(dataframe_dir+current_name+'.pkl')
             missing_vectors = []
-            call = subprocess.run(['ls','/gpfs/bbp.cscs.ch/home/lazovski/TriDy-tools'+results_dir[1:]+current_name+'/'],stdout = subprocess.PIPE)
-            out = call.stdout.decode('utf-8').split('\n')
-            for i in range(num_bins):
-                if sparam+'-'+str(i)+'_feature_vectors.npy' not in out:
-                    missing_vectors.append(i)
+            if not target_file.is_file():
+                print('Not found.\nSearching for vectors not yet featurised. ', end='', flush=True)
+                call = subprocess.run(['ls','/gpfs/bbp.cscs.ch/home/lazovski/TriDy-tools'+results_dir[1:]+current_name+'/'],stdout = subprocess.PIPE)
+                out = call.stdout.decode('utf-8').split('\n')
+                for i in range(num_bins):
+                    if sparam+'-'+str(i)+'_feature_vectors.npy' not in out:
+                        missing_vectors.append(i)
+            else:
+                print('Found.', flush=True)
         else:
             missing_vectors = list(range(num_bins))
         num_bins_real = len(missing_vectors)
-        print('Found '+str(num_bins_real)+' vectors. ', end='', flush=True)
+        print('Vector count: '+str(num_bins_real), flush=True)
 
         if num_bins_real > 0:
 
