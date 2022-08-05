@@ -201,6 +201,9 @@ for sparam in selection_parameters:
             f.close()
             created_file_counter += 1
 
+            # Reset number of jobs
+            num_jobs = config_dict['num_jobs']
+
         else:
             print('Nothing to do, skipping', flush=True)
 
