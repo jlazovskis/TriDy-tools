@@ -161,7 +161,7 @@ for sparam in selection_parameters:
 
         if check_featurevectors:
             print('Searching for vectors not yet featurised. ', end='', flush=True)
-            call = subprocess.run(['ls','/gpfs/bbp.cscs.ch/home/lazovski/TriDy-tools'+results_dir[1:]+current_name+'/'],stdout = subprocess.PIPE)
+            call = subprocess.run(['ls',results_dir+current_name+'/'],stdout = subprocess.PIPE)
             out = call.stdout.decode('utf-8').split('\n')
             for i in range(num_bins):
                 if sparam+'-'+str(i)+'_feature_vectors.npy' not in out:
