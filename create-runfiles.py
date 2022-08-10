@@ -28,20 +28,28 @@ config_address = sys.argv[1]
 with open(config_address, 'r') as f:
     config_dict = json.load(f)
 
-selection_parameters = config_dict['selection_parameters']        # List of selection parameters to use. Should match names of custom selection parameter binary arrays
-feature_parameters = config_dict['feature_parameters']            # List of feature parameters to use. One collection of files will be created for each
-json_template = config_dict['json_template']                      # Template to use when creating configuration .json files
-sbatch_template = config_dict['sbatch_template']                  # Template to use when creating .sbatch files to begin jobs
-num_jobs = config_dict['num_jobs']                                # Number of jobs (=number of sbatch files) to split up featursation+classification task into
-check_featurevectors = config_dict['check_featurevectors']        # Check to see if some parameters have already been featurised. Default is False
-check_dataframes = config_dict['check_dataframes']                # Check to see if some parameters have already been classified. Default is False
-only_featurise = config_dict['only_featurise']                    # If true, only creates the feature vectors and does not classify. Useful when repeating long jobs.
-bin_dir = config_dict['bin_dir']                                  # Location of bins (selection paramater partition). Necessary to know indices of jobs. Default is ./bins/
-parameter_dir = config_dict['parameter_dir']                      # Location of parameters created in step 2. Default is ./parameters/
-tridy_dir = config_dict['tridy_dir']                              # Location of TriDy package as it is on github. Default is ./../TriDy/
-runfile_dir = config_dict['runfile_dir']                          # Where to export the runfiles. Default is ./runfiles/
-results_dir = config_dict['results_dir']                          # Where the classification results are located. Default is ./results/
-dataframe_dir = config_dict['dataframe_dir']                      # Where dataframes will be exported. Relevant only if check_dataframes = True. Default is ./dataframes/
+# Values and boolean flags
+selection_parameters = config_dict['values']['selection_parameters']        # List of selection parameters to use. Should match names of custom selection parameter binary arrays
+feature_parameters = config_dict['values']['feature_parameters']            # List of feature parameters to use. One collection of files will be created for each
+num_jobs = config_dict['values']['num_jobs']                                # List of number of jobs (=number of sbatch files) to split up featursation+classification task into. Same length as feature_parameters
+randomise_vectors = config_dict['values']['randomise_vectors']              # If true, will randomise the assignment of tasks to each job. Useful if computation-intensive neighbourhoods are not evenly distributed
+check_featurevectors = config_dict['values']['check_featurevectors']        # Check to see if some parameters have already been featurised. Default is False
+check_dataframes = config_dict['values']['check_dataframes']                # Check to see if some parameters have already been classified. Default is False
+only_featurise = config_dict['values']['only_featurise']                    # If true, only creates the feature vectors and does not classify. Useful when repeating long jobs.
+
+# Paths of files and folders
+json_template = config_dict['paths']['json_template']                       # Template to use when creating configuration .json files
+sbatch_template = config_dict['paths']['sbatch_template']                   # Template to use when creating .sbatch files to begin jobs
+tridy_dir = config_dict['paths']['tridy_dir']                               # Location of TriDy package as it is on github. Default is ./../TriDy/
+bin_dir = config_dict['paths']['bin_dir']                                   # Location of bins (selection paramater partition). Necessary to know indices of jobs. Default is ./bins/
+parameter_dir = config_dict['paths']['parameter_dir']                       # Location of parameters created in step 2. Default is ./parameters/
+config_dir = config_dict['paths']['config_dir']                             # Where to export the configuration .json files. Default is ./configs/
+sbatch_dir = config_dict['paths']['sbatch_dir']                             # Where to export the .sbatch batch files. Default is ./sbatches/
+runfile_dir = config_dict['paths']['runfile_dir']                           # Where to export the runfiles. Default is ./runfiles/
+results_dir = config_dict['paths']['results_dir']                           # Where the classification results are located. Default is ./results/
+dataframe_dir = config_dict['paths']['dataframe_dir']                       # Where dataframes will be exported. Relevant only if check_dataframes = True. Default is ./dataframes/
+
+assert len(feature_parameters)==len(num_jobs), 'Number of feature parameters ('+str(len(feature_parameters))+') does not match number of job splits ('+str(len(num_jobs))+')'
 
 # Get feature gaps from names
 feature_gaps = []
@@ -140,7 +148,7 @@ for sparam in selection_parameters:
         print(current_name, flush=True)
 
         # Create folders
-        for parent_dir in ['configs','sbatches','results']:
+        for parent_dir in [config_dir, sbatch_dir, results_dir]:
             try:
                 os.mkdir(parent_dir+'/'+current_name)
                 created_directory_counter += 1
@@ -148,11 +156,11 @@ for sparam in selection_parameters:
                 pass
 
         # Create list of vectors to featurise
+        missing_vectors = []
         skip_current = False
         if check_dataframes:
             print('Searching for results dataframe. ', end='', flush=True)
             target_file = Path(dataframe_dir+current_name+'.pkl')
-            missing_vectors = []
             if not target_file.is_file():
                 print('Not found.', flush=True)
             else:
@@ -177,25 +185,33 @@ for sparam in selection_parameters:
             print('Vector count: '+str(num_bins_real), flush=True)
 
             # Distribute jobs evenly
-            chunk_size = num_bins_real//num_jobs
-            chunks = [chunk_size]*num_jobs
-            leftover_size = num_bins_real%num_jobs
+            current_num_jobs = num_jobs[findex]
+            chunk_size = num_bins_real//current_num_jobs
+            chunks = [chunk_size]*current_num_jobs
+            leftover_size = num_bins_real%current_num_jobs
             for i in range(leftover_size):
                 chunks[i]+=1
             assert sum(chunks) == num_bins_real, 'Number of expected bins ('+str(num_bins_real)+') does not match sum of job sizes ('+str(sum(chunks))+')'
             chunks_sum = [sum(chunks[:k]) for k in range(len(chunks)+1)]
-            job_list = [missing_vectors[chunks_sum[job_num]:chunks_sum[job_num+1]] for job_num in range(num_jobs)]
+
+            # Convert to numpy array and randomly rearrange
+            if randomise_vectors:
+                missing_vectors = np.array(missing_vectors)
+                np.random.shuffle(missing_vectors)
+
+            # Split into list of lists, one sublist of indices for each job
+            job_list = [missing_vectors[chunks_sum[job_num]:chunks_sum[job_num+1]] for job_num in range(current_num_jobs)]
 
             # Inform user of status
-            if num_bins_real < num_jobs:
+            if num_bins_real < current_num_jobs:
                 job_list = job_list[:num_bins_real]
-                num_jobs = num_bins_real
-            print('Splitting into '+str(num_jobs)+' jobs', flush=True)
+                current_num_jobs = num_bins_real
+            print('Splitting into '+str(current_num_jobs)+' jobs', flush=True)
 
             # Generate .sh file for easy execution of sbatch files
             f = open(runfile_dir+current_name+'.sh','w')
 
-            for job_num in range(num_jobs):
+            for job_num in range(current_num_jobs):
                 # Declare string replacements
                 string_replacements = [('#SSHORT',sparam), ('#FPARAM',fparam_to_pipename[fparam]), ('#FSHORT',fshort), ('#FGAP',fgap)]
 
@@ -203,22 +219,19 @@ for sparam in selection_parameters:
                 string_replacements.append(('#SPARAMS',reduce(lambda x,y: x+'\", \"'+y, [sparam+'-'+str(i) for i in job_list[job_num]])))
 
                 # Create .json files
-                file_string_replace(json_template, 'configs/'+current_name+'/'+str(job_num)+'.json', string_replacements)
+                file_string_replace(json_template, config_dir+current_name+'/'+str(job_num)+'.json', string_replacements)
                 created_file_counter += 1
 
                 # Create .sbatch files
-                file_string_replace(sbatch_template, 'sbatches/'+current_name+'/'+str(job_num)+'.sbatch', string_replacements)
+                file_string_replace(sbatch_template, sbatch_dir+current_name+'/'+str(job_num)+'.sbatch', string_replacements)
                 created_file_counter += 1
 
                 # Write line to .sh file
-                f.write('sbatch ../sbatches/'+current_name+'/'+str(job_num)+'.sbatch\n')
+                f.write('sbatch ..'+sbatch_dir[1:]+current_name+'/'+str(job_num)+'.sbatch\n')
 
             # Close .sh file
             f.close()
             created_file_counter += 1
-
-            # Reset number of jobs
-            num_jobs = config_dict['num_jobs']
 
         else:
             print('Nothing to do, skipping', flush=True)
