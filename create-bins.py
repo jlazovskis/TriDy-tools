@@ -28,11 +28,15 @@ config_address = sys.argv[1]
 with open(config_address, 'r') as f:
     config_dict = json.load(f)
 
+# Values and boolean flags
 selection_parameters = config_dict['selection_parameters']    # A list of selection parameters by which to create a kd-tree. Note that the order matters.
 add_noise = config_dict['add_noise']                          # A boolean list of the same length as above, indicating to which parameters noise should be added. If shorter, assume True.
 binsize_target = config_dict['binsize_target']                # The target leaf size for the kd-tree. Not guaranteed by default. Will not exceed this if unique values.
 overwrite_existing = config_dict['overwrite_existing']        # Whether or not to overwrite existing bins (and noise). Default is False.
 save_centroids = config_dict['save_centroids']                # Wgether or not to save centroids of bins. Default is False.
+
+# Paths of files and folders
+noise_files = config_dict['noise_files']                      # List of strings (arrays containg noise for each parameter, with corresponding indices). Takes priority over add_noise
 bin_dir = config_dict['bin_dir']                              # Directory to which bins will be exported, as a single (ragged) .npy array.
 
 ##
@@ -98,30 +102,37 @@ for i,s in enumerate(selection_parameters):
     current_short = df_shortdict[s]
     ratio = np.round(len(np.unique(current_parameter))/nnum,3)
     print('unique to all ratio is '+str(ratio), flush=True)
-    if add_noise[i]:
-        # Create noise
-        current_sorted = np.sort(np.unique(current_parameter))
-        current_diff = np.diff(current_sorted)
-        current_min = np.min(current_diff)
-        current_noise = np.array([(k-.5)*current_min for k in np.random.rand(nnum)])
-        current_new = np.array([current_parameter[k]+current_noise[k] for k in range(len(current_parameter))])
 
-        # Check unique ratio is 1
-        parameters[i] = current_new
+    # Check if noise file given
+    try:
+        current_noise = np.load(noise_files[i], allow_pickle=True)
+        print('Found existing noise file: using it\nUnique to all ratio is '+str(ratio), flush=True)
         ratio = np.round(len(np.unique(current_new))/nnum,3)
-        print('Noise added: new unique to all ratio is '+str(ratio), flush=True)
+    except:
+        if add_noise[i]:
+            # Create noise
+            current_sorted = np.sort(np.unique(current_parameter))
+            current_diff = np.diff(current_sorted)
+            current_min = np.min(current_diff)
+            current_noise = np.array([(k-.5)*current_min for k in np.random.rand(nnum)])
+            current_new = np.array([current_parameter[k]+current_noise[k] for k in range(len(current_parameter))])
 
-        # Save noise
-        print('Saving noise', flush=True)
-        if overwrite_existing:
-            np.save(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy', current_noise)
+            # Check unique ratio is 1
+            parameters[i] = current_new
+            ratio = np.round(len(np.unique(current_new))/nnum,3)
+            print('Noise added: new unique to all ratio is '+str(ratio), flush=True)
+
+            # Save noise
+            print('Saving noise', flush=True)
+            if overwrite_existing:
+                np.save(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy', current_noise)
+            else:
+                location = Path(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy')
+                assert not location.is_file(), 'Noise file exists, but config file says to not overwrite. Delete noise file or change config file.'
+                np.save(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy', current_noise)
+            created_file_counter += 1
         else:
-            location = Path(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy')
-            assert not location.is_file(), 'Noise file exists, but config file says to not overwrite. Delete noise file or change config file.'
-            np.save(bin_dir+'noise_'+current_short+'_aspartof_'+name+'.npy', current_noise)
-        created_file_counter += 1
-    else:
-        print('No noise added', flush=True)
+            print('No noise added', flush=True)
 
 ##
 ## Normalize to unit cube
