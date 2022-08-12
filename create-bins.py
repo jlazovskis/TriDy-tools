@@ -106,8 +106,10 @@ for i,s in enumerate(selection_parameters):
     # Check if noise file given
     try:
         current_noise = np.load(noise_files[i], allow_pickle=True)
-        print('Found existing noise file: using it\nUnique to all ratio is '+str(ratio), flush=True)
+        current_new = np.array([current_parameter[k]+current_noise[k] for k in range(len(current_parameter))])
         ratio = np.round(len(np.unique(current_new))/nnum,3)
+        print('Found existing noise file: using it\nUnique to all ratio is '+str(ratio), flush=True)
+        parameters[i] = current_new
     except:
         if add_noise[i]:
             # Create noise
