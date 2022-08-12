@@ -29,15 +29,15 @@ with open(config_address, 'r') as f:
     config_dict = json.load(f)
 
 # Values and boolean flags
-selection_parameters = config_dict['selection_parameters']    # A list of selection parameters by which to create a kd-tree. Note that the order matters.
-add_noise = config_dict['add_noise']                          # A boolean list of the same length as above, indicating to which parameters noise should be added. If shorter, assume True.
-binsize_target = config_dict['binsize_target']                # The target leaf size for the kd-tree. Not guaranteed by default. Will not exceed this if unique values.
-overwrite_existing = config_dict['overwrite_existing']        # Whether or not to overwrite existing bins (and noise). Default is False.
-save_centroids = config_dict['save_centroids']                # Wgether or not to save centroids of bins. Default is False.
+selection_parameters = config_dict['values']['selection_parameters']    # A list of selection parameters by which to create a kd-tree. Note that the order matters.
+add_noise = config_dict['values']['add_noise']                          # A boolean list of the same length as above, indicating to which parameters noise should be added. If shorter, assume True.
+binsize_target = config_dict['values']['binsize_target']                # The target leaf size for the kd-tree. Not guaranteed by default. Will not exceed this if unique values.
+overwrite_existing = config_dict['values']['overwrite_existing']        # Whether or not to overwrite existing bins (and noise). Default is False.
+save_centroids = config_dict['values']['save_centroids']                # Wgether or not to save centroids of bins. Default is False.
 
 # Paths of files and folders
-noise_files = config_dict['noise_files']                      # List of strings (arrays containg noise for each parameter, with corresponding indices). Takes priority over add_noise
-bin_dir = config_dict['bin_dir']                              # Directory to which bins will be exported, as a single (ragged) .npy array.
+noise_files = config_dict['paths']['noise_files']                       # List of strings (arrays containg noise for each parameter, with corresponding indices). Takes priority over add_noise
+bin_dir = config_dict['paths']['bin_dir']                               # Directory to which bins will be exported, as a single (ragged) .npy array.
 
 ##
 ## Auxiliary functions
