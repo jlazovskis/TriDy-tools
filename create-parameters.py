@@ -23,7 +23,10 @@ config_address = sys.argv[1]
 with open(config_address, 'r') as f:
     config_dict = json.load(f)
 
+# Values
 selection_parameter_names = config_dict['selection_parameter_name']    # List of names of new 'parameters'. Should be short names, joined by underscore
+
+# Paths of files and folders
 bin_dir = config_dict['bin_dir']                                       # Location of the partition (made of bins) created in step 1. Default is ./bins/
 parameter_dir = config_dict['parameter_dir']                           # Where to export the binary parameters. Default is ./parameters/
 
