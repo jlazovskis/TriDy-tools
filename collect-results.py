@@ -97,8 +97,8 @@ for param in paramater_names:
                     current_dict['cv_err'].append(current_numbers[1])
                     current_dict['test_acc'].append(current_numbers[2])
                     current_dict['test_err'].append(current_numbers[3])
-                    current_dict['nonzero_count'].append(current_numbers[4])
-                    current_dict['total_count'].append(current_numbers[5])
+                    current_dict['nonzero_count'].append(int(current_numbers[4]))
+                    current_dict['total_count'].append(int(current_numbers[5]))
 
         print('Read '+str(len(current_dict['bin_number']))+' classification results', flush=True)
         if not collect_incomplete:
