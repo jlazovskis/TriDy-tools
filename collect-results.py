@@ -116,7 +116,8 @@ for param in paramater_names:
         else:
             df = pd.DataFrame.from_dict(current_dict)
             target_file = Path(dataframe_dir+param+'.pkl')
-            assert not target_file.is_file(), 'Dataframe file exists, but config file says to not overwrite. Delete or rename dataframe, or change config file.'
+            if not overwrite_existing:
+                assert not target_file.is_file(), 'Dataframe file exists, but config file says to not overwrite. Delete or rename dataframe, or change config file.'
             df.to_pickle(target_file)
             created_file_counter += 1
 
