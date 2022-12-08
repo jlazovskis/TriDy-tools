@@ -36,6 +36,7 @@ overwrite_existing = config_dict['values']['overwrite_existing']        # Whethe
 save_centroids = config_dict['values']['save_centroids']                # Wgether or not to save centroids of bins. Default is False.
 
 # Paths of files and folders
+dataframe = config_dict['paths']['dataframe']                           # Filename of datafrmae in which to look columns with names from selecton_parameters
 noise_files = config_dict['paths']['noise_files']                       # List of strings (arrays containg noise for each parameter, with corresponding indices). Takes priority over add_noise
 bin_dir = config_dict['paths']['bin_dir']                               # Directory to which bins will be exported, as a single (ragged) .npy array.
 
@@ -80,10 +81,11 @@ created_file_counter = 0
 ##
 
 print('----------\nLoading selection parameters', flush=True)
-df = pd.read_pickle('data/parameters.pkl')
+df = pd.read_pickle(dataframe)
 parameters = []
 for s in selection_parameters:
-    assert s in df.columns, 'Input parameter \''+s+'\' not found in dataframe parameters.pkl column names'
+    assert s in df.columns, 'Input parameter \''+s+'\' not found in given 
+    dataframe column names'
     parameters.append(df[s])
 
 with open('data/parameters-shortnames.pickle', 'rb') as f:
