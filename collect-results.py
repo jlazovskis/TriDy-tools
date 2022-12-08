@@ -82,7 +82,7 @@ for param in paramater_names:
     print('Found '+str(len(current_files))+' text files to read', flush=True)
 
     if current_files != []:
-        current_dict = {'bin_number':[], 'cv_acc':[], 'cv_err':[], 'test_acc':[], 'test_err':[]}
+        current_dict = {'bin_number':[], 'cv_acc':[], 'cv_err':[], 'test_acc':[], 'test_err':[], 'nonzero_count':[], 'total_count':[]}
         for file in current_files:
             f = open(current_directory+file,'r')
             lines = f.readlines()
@@ -97,6 +97,8 @@ for param in paramater_names:
                     current_dict['cv_err'].append(current_numbers[1])
                     current_dict['test_acc'].append(current_numbers[2])
                     current_dict['test_err'].append(current_numbers[3])
+                    current_dict['nonzero_count'].append(current_numbers[4])
+                    current_dict['total_count'].append(current_numbers[5])
 
         print('Read '+str(len(current_dict['bin_number']))+' classification results', flush=True)
         if not collect_incomplete:
